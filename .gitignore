@@ -1,0 +1,74 @@
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+.bun/
+
+# dotenv environment variables
+.env
+.env.*.local
+
+# Next.js build output
+.next/
+out/
+
+# SvelteKit build output (in case of experimentation)
+.svelte-kit/
+
+# Build output
+dist/
+build/
+
+# Mac system files
+.DS_Store
+
+# VS Code settings
+.vscode/
+
+# OS generated files
+Thumbs.db
+
+# Optional coverage tool
+coverage/
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+
+# Testing outputs
+jest-html-reporters-*
+
+# Vercel output
+.vercel/
+
+# Supabase local dev
+.supabase/
+
+# Ignore database backups or dumps
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+
+# Ignore zipped files or local backups
+*.zip
+*.tar.gz
+*.tgz
+*.bak
+*.orig
+*.old
