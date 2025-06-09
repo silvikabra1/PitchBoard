@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
 import type { StartupClip } from "@/lib/types"
+import { getAllStartupClips } from "./api"
 
 interface AudioContextType {
   currentClip: StartupClip | null
@@ -24,21 +25,26 @@ interface AudioContextType {
 const AudioContext = createContext<AudioContextType | undefined>(undefined)
 
 export function AudioProvider({ children }: { children: ReactNode }) {
+  const startupClips = getAllStartupClips()
+
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const [currentClip, setCurrentClip] = useState<StartupClip | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [queue, setQueue] = useState<StartupClip[]>([])
+  const [queue, setQueue] = useState<StartupClip[]>(startupClips ? startupClips : [])
   const [isShuffleMode, setIsShuffleMode] = useState(false)
+  const [playedClips, setPlayedClips] = useState<Set<string>>(new Set())
 
   // Use a ref to access the current value of isShuffleMode in event listeners
   const isShuffleModeRef = useRef(isShuffleMode)
+  const currentClipRef = useRef(currentClip)
 
-  // Update the ref when the state changes
+  // Update the refs when the states change
   useEffect(() => {
     isShuffleModeRef.current = isShuffleMode
-  }, [isShuffleMode])
+    currentClipRef.current = currentClip
+  }, [isShuffleMode, currentClip])
 
   useEffect(() => {
     const audio = new Audio()
@@ -53,18 +59,21 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     }
 
     const handleEnded = () => {
-      setIsPlaying(false)
-
-      // If shuffle mode is enabled, play the next clip
+      // If shuffle mode is enabled, play the next clip immediately
       if (isShuffleModeRef.current) {
-        // Small timeout to ensure state updates have propagated
-        setTimeout(() => {
-          const randomClip = getRandomClip()
-          if (randomClip) {
-            playClip(randomClip)
-          }
-        }, 100)
+        const randomClip = getRandomClip()
+        if (randomClip) {
+          // Don't set isPlaying to false since we're immediately playing the next clip
+          setCurrentClip(randomClip)
+          audio.src = randomClip.audioUrl
+          audio.play().catch((error) => console.error("Error playing next clip:", error))
+          setPlayedClips(prev => new Set([...prev, randomClip.id]))
+          return
+        }
       }
+      
+      // If we get here, either shuffle mode is off or there's no next clip
+      setIsPlaying(false)
     }
 
     audio.addEventListener("timeupdate", handleTimeUpdate)
@@ -93,6 +102,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     audioElement.src = clip.audioUrl
     audioElement.play().catch((error) => console.error("Error playing audio:", error))
     setIsPlaying(true)
+
+    // Add to played clips
+    setPlayedClips(prev => new Set([...prev, clip.id]))
 
     // Add to queue if not already in it
     if (!queue.some((qClip) => qClip.id === clip.id)) {
@@ -126,18 +138,26 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }
 
   const getRandomClip = () => {
-    if (queue.length <= 1) return null
-
-    // Get a random clip that's not the current one
-    const availableClips = queue.filter((clip) => clip.id !== currentClip?.id)
-    if (availableClips.length === 0) return null
-
+    // If queue is empty, use all available clips
+    const availableClips = queue.length > 0 ? queue : (startupClips ? startupClips : [])
+    
+    // First try to find clips that haven't been played yet
+    const unplayedClips = availableClips.filter(clip => !playedClips.has(clip.id))
+    
+    // If we have unplayed clips, use those
+    if (unplayedClips.length > 0) {
+      const randomIndex = Math.floor(Math.random() * unplayedClips.length)
+      return unplayedClips[randomIndex]
+    }
+    
+    // If all clips have been played, reset the played clips and try again
+    setPlayedClips(new Set())
     const randomIndex = Math.floor(Math.random() * availableClips.length)
     return availableClips[randomIndex]
   }
 
   const nextClip = () => {
-    if (!currentClip || queue.length === 0) return
+    if (!currentClip) return
 
     if (isShuffleMode) {
       // Play a random clip in shuffle mode
@@ -156,7 +176,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }
 
   const previousClip = () => {
-    if (!currentClip || queue.length === 0) return
+    if (!currentClip) return
 
     if (isShuffleMode) {
       // Play a random clip in shuffle mode

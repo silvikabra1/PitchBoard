@@ -5,27 +5,40 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ExternalLink, MapPin, Clock, Play, Send } from "lucide-react"
-import { mockStartupClips } from "@/lib/mock-data"
+import { ExternalLink, MapPin, Clock, Play, Send, Headphones } from "lucide-react"
 import { useAudio } from "@/lib/audio-context"
-import type { Startup } from "@/lib/types"
+import type { Startup, StartupClip } from "@/lib/types"
+import { getClipForRole, getClipsForStartup, getRoleById, getSimilarStartupsToStartup } from "@/lib/api"
+import { useRouter } from "next/navigation"
+import { useStartup } from "@/lib/startup-context"
 
 interface StartupDetailProps {
   startup: Startup
 }
 
 export function StartupDetail({ startup }: StartupDetailProps) {
+  const router = useRouter()
   const { playClip, currentClip, isPlaying, pauseClip } = useAudio()
+  const { setSelectedStartupId } = useStartup()
 
   // Find all clips for this startup
-  const startupClips = mockStartupClips.filter((clip) => clip.startup.id === startup.id)
+  const startupClips = getClipsForStartup(startup.id)
 
-  const handlePlayClip = (clip: (typeof mockStartupClips)[0]) => {
+  const handlePlayClip = (clip: StartupClip) => {
     if (currentClip?.id === clip.id && isPlaying) {
       pauseClip()
     } else {
       playClip(clip)
     }
+  }
+
+  const handleRoleClick = (roleId: string) => {
+    router.push(`/roles/${roleId}`)
+  }
+
+  const handleStartupClick = (startupId: string) => {
+    setSelectedStartupId(startupId)
+    router.push(`/startups/${startupId}`)
   }
 
   return (
@@ -75,24 +88,31 @@ export function StartupDetail({ startup }: StartupDetailProps) {
             </div>
           </TabsContent>
           <TabsContent value="roles" className="space-y-4">
-            <h2 className="text-xl font-bold mt-4">Open Roles</h2>
-            {startup.roles.map((role) => {
+            {startup.roleIds.map((roleId) => {
+              const role = getRoleById(roleId)
+              if (!role) return null
               // Find the audio clip for this role if it exists
-              const roleClip = startupClips.find((clip) => clip.title.toLowerCase().includes(role.title.toLowerCase()))
-
-              // Format the role title to use @ instead of at
-              const formattedTitle = `${role.title} @ ${startup.name}`
+              const roleClip = getClipForRole(roleId)
 
               return (
-                <Card key={role.id}>
+                <Card 
+                  key={role.id} 
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => handleRoleClick(role.id)}
+                >
                   <CardHeader>
-                    <CardTitle>{formattedTitle}</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      {role.title}
+                      {roleClip && currentClip?.id === roleClip.id && isPlaying && (
+                        <Headphones className="h-4 w-4 text-primary animate-pulse" />
+                      )}
+                    </CardTitle>
                     <CardDescription>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         <span>{role.location}</span>
                         <Clock className="h-4 w-4 ml-2" />
-                        <span>{role.type}</span>
+                        <span>{role.employmentType}</span>
                       </div>
                     </CardDescription>
                   </CardHeader>
@@ -110,12 +130,26 @@ export function StartupDetail({ startup }: StartupDetailProps) {
                     <div></div> {/* Empty div for spacing */}
                     <div className="flex gap-2">
                       {roleClip && (
-                        <Button size="sm" onClick={() => handlePlayClip(roleClip)}>
+                        <Button 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handlePlayClip(roleClip)
+                          }} 
+                          disabled={!roleClip}
+                        >
                           <Play className="mr-2 h-4 w-4" />
                           Listen
                         </Button>
                       )}
-                      <Button size="sm" variant="outline">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRoleClick(role.id)
+                        }}
+                      >
                         <Send className="mr-2 h-4 w-4" />
                         Apply
                       </Button>
@@ -146,25 +180,26 @@ export function StartupDetail({ startup }: StartupDetailProps) {
             <CardTitle>Similar Startups</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockStartupClips
-              .filter((clip) => clip.startup.id !== startup.id)
-              .slice(0, 2)
-              .map((clip) => (
-                <div key={clip.id} className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded overflow-hidden bg-muted">
-                    <Image
-                      src={clip.startup.logoUrl || "/placeholder.svg"}
-                      alt={clip.startup.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                  <div>
-                    <p className="font-medium">{clip.startup.name}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{clip.startup.description}</p>
-                  </div>
+            {getSimilarStartupsToStartup(startup.id).map((similarStartup) => (
+              <div 
+                key={similarStartup.id} 
+                className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
+                onClick={() => handleStartupClick(similarStartup.id)}
+              >
+                <div className="relative w-10 h-10 rounded overflow-hidden bg-muted">
+                  <Image
+                    src={similarStartup.logoUrl || "/placeholder.svg"}
+                    alt={similarStartup.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-              ))}
+                <div>
+                  <p className="font-medium">{similarStartup.name}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{similarStartup.description}</p>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>

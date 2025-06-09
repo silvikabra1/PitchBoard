@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { mockStartupClips } from "@/lib/mock-data"
 import { Header } from "@/components/header"
 import Image from "next/image"
 import { X, Play, Send, ChevronDown } from "lucide-react"
 import { useAudio } from "@/lib/audio-context"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { getClipForRole, getSavedRolesForUser, getStartupById } from "@/lib/api"
 
 export default function ProfilePage() {
   const { playClip } = useAudio()
@@ -71,7 +71,6 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Header />
       <div className="container mx-auto px-4 py-8 pb-36">
         <h1 className="text-3xl font-bold mb-6">Your Profile</h1>
 
@@ -245,37 +244,45 @@ export default function ProfilePage() {
           <TabsContent value="saved">
             <Card>
               <CardHeader>
-                <CardTitle>Saved Jobs</CardTitle>
-                <CardDescription>Jobs and startups you've saved for later</CardDescription>
+                <CardTitle>Saved Roles</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockStartupClips.slice(0, 2).map((clip) => (
-                    <div key={clip.id} className="flex gap-4 p-4 border rounded-lg">
-                      <div className="relative w-16 h-16 rounded overflow-hidden bg-muted">
-                        <Image
-                          src={clip.startup.logoUrl || "/placeholder.svg"}
-                          alt={clip.startup.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">{clip.title.replace(" at ", " @ ")}</h3>
-                        <p className="text-sm text-muted-foreground">{clip.startup.name}</p>
-                        <div className="flex gap-2 mt-2">
-                          <Button size="sm" onClick={() => playClip(clip)}>
-                            <Play className="mr-2 h-4 w-4" />
-                            Listen
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Send className="mr-2 h-4 w-4" />
-                            Apply
-                          </Button>
+                  {getSavedRolesForUser()?.map((role) => {
+                    const startup = getStartupById(role.id)
+                    if (!startup) return null
+                    const clip = getClipForRole(role.id)
+                    return (
+                      <div key={role.id} className="flex gap-4 p-4 border rounded-lg">
+                        <div className="relative w-16 h-16 rounded overflow-hidden bg-muted">
+                          <Image
+                            src={startup.logoUrl || "/placeholder.svg"}
+                            alt={startup.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium">{role.title}</h3>
+                          <p className="text-sm text-muted-foreground">{startup.name}</p>
+                          <div className="flex gap-2 mt-2">
+                            <Button 
+                              size="sm" 
+                              onClick={() => clip && playClip(clip)}
+                              disabled={!clip}
+                            >
+                              <Play className="mr-2 h-4 w-4" />
+                              Listen
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Send className="mr-2 h-4 w-4" />
+                              Apply
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>

@@ -2,15 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { useAudio } from "@/lib/audio-context"
-import { mockStartupClips } from "@/lib/mock-data"
+import { getAllStartupClips } from "@/lib/api"
 
 export function Hero() {
+  const startupClips = getAllStartupClips()
+
   const { playClip } = useAudio()
 
   const handleStartListening = () => {
     // Play the first clip when the button is clicked
-    if (mockStartupClips.length > 0) {
-      playClip(mockStartupClips[0])
+    if (startupClips && startupClips.length > 0) {
+      playClip(startupClips[0])
     }
   }
 

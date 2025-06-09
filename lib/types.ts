@@ -3,29 +3,28 @@ export interface Startup {
   name: string
   description: string
   logoUrl: string
-  website: string
   founderClipUrl?: string
-  roles: Role[]
+  website: string
+  roleIds: string[]
 }
 
 export interface Role {
   id: string
   title: string
   description: string
-  location: string
-  type: string // Full-time, Part-time, Contract, etc.
+  active: boolean
+  saved: boolean
+  location: string[]
+  employmentType: string // Full-time, Part-time, Contract, etc.
   tags: string[]
 }
 
 export interface StartupClip {
   id: string
-  startup: Startup
-  title: string
-  description: string
+  startupId: string
+  roleId: string
   audioUrl: string
   duration: number // in seconds
-  tags: string[]
-  locations: string[] // Separate array for locations
 }
 
 export interface User {
@@ -37,14 +36,13 @@ export interface User {
     locations: string[]
     tags: string[]
   }
-  likedStartups: string[]
-  savedClips: string[]
-  applications: Application[]
+  savedStartupIds: string[]
+  savedRoleIds: string[] // revisit this
+  applicationIds: string[]
 }
 
 export interface Application {
   id: string
-  clipId: string
   startupId: string
   roleId: string
   voiceNoteUrl?: string
